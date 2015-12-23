@@ -63,7 +63,6 @@ func (f *Font) Write(text string, dest draw.Image, startX, startY int) (newX, ne
 			image.Rect(x+x0, y+y1-letter.Bounds().Dy(), x+letter.Bounds().Dx(), y+letter.Bounds().Dy()),
 			source, image.ZP, letter, image.ZP, draw.Over)
 		x += round(float64(advance)*scale) + kerning
-		println(kerning)
 	}
 	return x, y - yOffset
 }
