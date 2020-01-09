@@ -34,6 +34,33 @@ type Font struct {
 	PixelHeight int
 }
 
+func (f *Font) Measure(text string) (w, h int) {
+	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
+	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
+
+	x := 0
+	yOffset := round(float64(ascend+baseline) * scale)
+	y := 0 + yOffset
+
+	var last rune
+	for i, r := range text {
+		if r == '\n' {
+			x = 0
+			y += round(float64(ascend-descend+baseline) * scale)
+			continue
+		}
+
+		advance, leftSideBearing := f.fontInfo.GetCodepointHMetrics(int(r))
+		x += round(float64(leftSideBearing) * scale)
+		kerning := 0
+		if i != 0 {
+			kerning = round(float64(f.fontInfo.GetCodepointKernAdvance(int(last), int(r))) * scale)
+		}
+		x += round(float64(advance)*scale) + kerning
+	}
+	return x, y - yOffset
+}
+
 func (f *Font) Write(text string, dest draw.Image, startX, startY int) (newX, newY int) {
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
