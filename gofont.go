@@ -1,11 +1,12 @@
 package gofont
 
 import (
-	"github.com/gonutz/fontstash.go/truetype"
 	"image"
 	"image/color"
 	"image/draw"
 	"io/ioutil"
+
+	"github.com/gonutz/fontstash.go/truetype"
 )
 
 // LoadFromFile loads a True Type Font file (.ttf) and creates a font from it.
@@ -22,21 +23,23 @@ func LoadFromFile(path string) (*Font, error) {
 	}
 
 	return &Font{
-		info,
-		make(map[int]map[rune]*image.Alpha),
-		0, 0, 0,
-		20,
+		A:           255,
+		PixelHeight: 20,
+		fontInfo:    info,
+		letters:     make(map[int]map[rune]*image.Alpha),
 	}, nil
 }
 
 // Font contains a font face, color and size information. To change the font
-// color, set the R, G, B values. These are red/green/blue color channels in the
-// range [0..255]. To change the font size, set the PixelHeight value.
+// color, set the R, G, B, A values. These are red/green/blue/opacity color
+// channels in the range [0..255]. A=0 is fully transparent, A=255 is solid. To
+// change the font size, set the PixelHeight value.
 type Font struct {
-	fontInfo    *truetype.FontInfo
-	letters     map[int]map[rune]*image.Alpha
-	R, G, B     uint8
+	R, G, B, A  uint8
 	PixelHeight int
+
+	fontInfo *truetype.FontInfo
+	letters  map[int]map[rune]*image.Alpha
 }
 
 // Measure returns the size of the text when written in the Font's current pixel
@@ -44,6 +47,7 @@ type Font struct {
 func (f *Font) Measure(text string) (w, h int) {
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
+	lineHeight := round(float64(ascend-descend+baseline) * scale)
 
 	x := 0
 	yOffset := round(float64(ascend+baseline) * scale)
@@ -53,7 +57,7 @@ func (f *Font) Measure(text string) (w, h int) {
 	for i, r := range text {
 		if r == '\n' {
 			x = 0
-			y += round(float64(ascend-descend+baseline) * scale)
+			y += lineHeight
 			continue
 		}
 
@@ -65,7 +69,7 @@ func (f *Font) Measure(text string) (w, h int) {
 		}
 		x += round(float64(advance)*scale) + kerning
 	}
-	return x, y - yOffset
+	return x, y - yOffset + lineHeight
 }
 
 // Write writes the given text aligned top-left at the given image position. It
@@ -75,6 +79,7 @@ func (f *Font) Measure(text string) (w, h int) {
 func (f *Font) Write(text string, dest draw.Image, startX, startY int) (newX, newY int) {
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
+	lineHeight := round(float64(ascend-descend+baseline) * scale)
 
 	source := image.NewUniform(color.RGBA{f.R, f.G, f.B, 255})
 	x := startX
@@ -85,21 +90,31 @@ func (f *Font) Write(text string, dest draw.Image, startX, startY int) (newX, ne
 	for i, r := range text {
 		if r == '\n' {
 			x = startX
-			y += round(float64(ascend-descend+baseline) * scale)
+			y += lineHeight
 			continue
 		}
 
-		letter := f.getLetter(r, scale)
 		advance, leftSideBearing := f.fontInfo.GetCodepointHMetrics(int(r))
-		x0, _, _, y1 := f.fontInfo.GetCodepointBitmapBox(int(r), 0, scale)
 		x += round(float64(leftSideBearing) * scale)
 		kerning := 0
 		if i != 0 {
 			kerning = round(float64(f.fontInfo.GetCodepointKernAdvance(int(last), int(r))) * scale)
 		}
-		draw.DrawMask(dest,
-			image.Rect(x+x0, y+y1-letter.Bounds().Dy(), x+letter.Bounds().Dx(), y+letter.Bounds().Dy()),
-			source, image.ZP, letter, image.ZP, draw.Over)
+
+		letter := f.getLetter(r, scale)
+		var mask image.Image = letter
+		if f.A != 255 {
+			mask = newAlphaMultiplied(letter, f.A)
+		}
+		w := letter.Bounds().Dx()
+		h := letter.Bounds().Dy()
+		x0, _, _, y1 := f.fontInfo.GetCodepointBitmapBox(int(r), 0, scale)
+		draw.DrawMask(
+			dest, image.Rect(x+x0, y+y1-h, x+w, y+h),
+			source, image.ZP,
+			mask, image.ZP,
+			draw.Over,
+		)
 		x += round(float64(advance)*scale) + kerning
 	}
 	return x, y - yOffset
@@ -129,4 +144,21 @@ func round(f float64) int {
 		return int(f - 0.5)
 	}
 	return int(f + 0.5)
+}
+
+func newAlphaMultiplied(img *image.Alpha, a uint8) image.Image {
+	return alphaMultiplied{
+		Alpha: img,
+		a:     int(a),
+	}
+}
+
+type alphaMultiplied struct {
+	*image.Alpha
+	a int
+}
+
+func (img alphaMultiplied) At(x, y int) color.Color {
+	orig := img.AlphaAt(x, y).A
+	return color.Alpha{A: uint8(int(orig) * img.a / 255)}
 }
