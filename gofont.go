@@ -4,15 +4,17 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/gonutz/fontstash.go/truetype"
 )
 
-// LoadFromFile loads a True Type Font file (.ttf) and creates a font from it.
-// The returned font is solid black and 20 pixels high.
-func LoadFromFile(path string) (*Font, error) {
-	data, err := ioutil.ReadFile(path)
+// Read reads the True Type Font (.ttf) and creates a font from it. The returned
+// font is solid black and 20 pixels high.
+func Read(r io.Reader) (*Font, error) {
+	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -28,6 +30,17 @@ func LoadFromFile(path string) (*Font, error) {
 		fontInfo:    info,
 		letters:     make(map[int]map[rune]*image.Alpha),
 	}, nil
+}
+
+// LoadFromFile loads a True Type Font file (.ttf) and creates a font from it.
+// The returned font is solid black and 20 pixels high.
+func LoadFromFile(path string) (*Font, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return Read(f)
 }
 
 // Font contains a font face, color and size information. To change the font
