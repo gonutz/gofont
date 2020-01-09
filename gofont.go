@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 )
 
+// LoadFromFile loads a True Type Font file (.ttf) and creates a font from it.
+// The returned font is solid black and 20 pixels high.
 func LoadFromFile(path string) (*Font, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -27,6 +29,9 @@ func LoadFromFile(path string) (*Font, error) {
 	}, nil
 }
 
+// Font contains a font face, color and size information. To change the font
+// color, set the R, G, B values. These are red/green/blue color channels in the
+// range [0..255]. To change the font size, set the PixelHeight value.
 type Font struct {
 	fontInfo    *truetype.FontInfo
 	letters     map[int]map[rune]*image.Alpha
@@ -34,6 +39,8 @@ type Font struct {
 	PixelHeight int
 }
 
+// Measure returns the size of the text when written in the Font's current pixel
+// height.
 func (f *Font) Measure(text string) (w, h int) {
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
@@ -61,6 +68,10 @@ func (f *Font) Measure(text string) (w, h int) {
 	return x, y - yOffset
 }
 
+// Write writes the given text aligned top-left at the given image position. It
+// returns the position where the text ends. This can be used to write the next
+// text, e.g. if you want to write a single word in a text with a different
+// color.
 func (f *Font) Write(text string, dest draw.Image, startX, startY int) (newX, newY int) {
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
