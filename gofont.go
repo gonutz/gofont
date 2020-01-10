@@ -87,32 +87,18 @@ func (f *Font) Measure(text string) (w, h int) {
 }
 
 // WriteAnchor lets you justify the text horizontally and vertically. The anchor
-// point and type determine where the text is "drawn to".
-//
-//                       AnchorTopCenter
-//                              v
-//        AnchorTopLeft x-------x--------x AnchorTopRight
-//                      |                |
-//                      |                |
-//                      |                |
-//     AnchorCenterLeft x       x        x AnchorCenterRight
-//                      |  AnchorCenter  |
-//                      |                |
-//                      |                |
-//     AnchorBottomLeft x-------x--------x AnchorBottomRight
-//                              ^
-//                      AnchorBottomCenter
-//
-// Here are some examples of what the Anchor type means:
+// determines the point that the text "gravitates to".
+// Here are some examples of what the Anchor type means, 'X' marks the anchor
+// point in the image:
 //
 //     AnchorCenter    AnchorCenterLeft  AnchorBottomRight
 //     +----------+      +----------+      +----------+
 //     |          |      |          |      |          |
 //     |   this   |      |centered  |      |          |
-//     |     x    |      xleft      |      |   text at|
+//     |    iX    |      Xleft      |      |   text at|
 //     | centered |      |vertically|      |    bottom|
 //     |          |      |          |      |     right|
-//     +----------+      +----------+      +----------x
+//     +----------+      +----------+      +----------X
 func (f *Font) WriteAnchor(dest draw.Image, text string, anchorX, anchorY int, anchor Anchor) {
 	lines := strings.Split(text, "\n")
 	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
