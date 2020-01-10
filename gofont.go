@@ -174,6 +174,7 @@ func (f *Font) WriteAnchor(dest draw.Image, text string, anchorX, anchorY int, a
 	}
 }
 
+// Anchor is the position of the anchor point, see Font.WriteAnchor.
 type Anchor int
 
 const (
