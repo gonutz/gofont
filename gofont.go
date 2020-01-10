@@ -26,10 +26,10 @@ func Read(r io.Reader) (*Font, error) {
 	}
 
 	return &Font{
-		A:           255,
-		PixelHeight: 20,
-		fontInfo:    info,
-		letters:     make(map[int]map[rune]*image.Alpha),
+		A:              255,
+		HeightInPixels: 20,
+		fontInfo:       info,
+		letters:        make(map[int]map[rune]*image.Alpha),
 	}, nil
 }
 
@@ -49,17 +49,19 @@ func LoadFromFile(path string) (*Font, error) {
 // channels in the range [0..255]. A=0 is fully transparent, A=255 is solid. To
 // change the font size, set the PixelHeight value.
 type Font struct {
-	R, G, B, A  uint8
-	PixelHeight int
+	R, G, B, A     uint8
+	HeightInPixels int
 
 	fontInfo *truetype.FontInfo
-	letters  map[int]map[rune]*image.Alpha
+	// letters maps from a pixel size to a map from characters to their glyph
+	// images: letters[sizeInPixels][character] == alphaImage
+	letters map[int]map[rune]*image.Alpha
 }
 
 // Measure returns the size of the text when written in the Font's current pixel
 // height.
 func (f *Font) Measure(text string) (w, h int) {
-	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
+	scale := f.fontInfo.ScaleForPixelHeight(float64(f.HeightInPixels))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
 	lineHeight := round(float64(ascend-descend+baseline) * scale)
 
@@ -82,6 +84,7 @@ func (f *Font) Measure(text string) (w, h int) {
 			kerning = round(float64(f.fontInfo.GetCodepointKernAdvance(int(last), int(r))) * scale)
 		}
 		x += round(float64(advance)*scale) + kerning
+		last = r
 	}
 	return x, y - yOffset + lineHeight
 }
@@ -101,7 +104,7 @@ func (f *Font) Measure(text string) (w, h int) {
 //     +----------+      +----------+      +----------X
 func (f *Font) WriteAnchor(dest draw.Image, text string, anchorX, anchorY int, anchor Anchor) {
 	lines := strings.Split(text, "\n")
-	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
+	scale := f.fontInfo.ScaleForPixelHeight(float64(f.HeightInPixels))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
 	yOffset := round(float64(ascend+baseline) * scale)
 	lineHeight := round(float64(ascend-descend+baseline) * scale)
@@ -163,6 +166,8 @@ func (f *Font) WriteAnchor(dest draw.Image, text string, anchorX, anchorY int, a
 				kerning = round(float64(f.fontInfo.GetCodepointKernAdvance(int(last), int(r))) * scale)
 			}
 			x += round(float64(advance)*scale) + kerning
+
+			last = r
 		}
 
 		y += lineHeight
@@ -188,7 +193,7 @@ const (
 // text, e.g. if you want to write a single word in a text with a different
 // color.
 func (f *Font) Write(dest draw.Image, text string, startX, startY int) (newX, newY int) {
-	scale := f.fontInfo.ScaleForPixelHeight(float64(f.PixelHeight))
+	scale := f.fontInfo.ScaleForPixelHeight(float64(f.HeightInPixels))
 	ascend, descend, baseline := f.fontInfo.GetFontVMetrics()
 	lineHeight := round(float64(ascend-descend+baseline) * scale)
 
@@ -228,15 +233,16 @@ func (f *Font) Write(dest draw.Image, text string, startX, startY int) (newX, ne
 			kerning = round(float64(f.fontInfo.GetCodepointKernAdvance(int(last), int(r))) * scale)
 		}
 		x += round(float64(advance)*scale) + kerning
+		last = r
 	}
 	return x, y - yOffset
 }
 
 func (f *Font) getLetter(r rune, scale float64) *image.Alpha {
-	size, ok := f.letters[f.PixelHeight]
+	size, ok := f.letters[f.HeightInPixels]
 	if !ok {
 		size = make(map[rune]*image.Alpha)
-		f.letters[f.PixelHeight] = size
+		f.letters[f.HeightInPixels] = size
 	}
 
 	letter, ok := size[r]
