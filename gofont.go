@@ -47,7 +47,7 @@ func LoadFromFile(path string) (*Font, error) {
 // Font contains a font face, color and size information. To change the font
 // color, set the R, G, B, A values. These are red/green/blue/opacity color
 // channels in the range [0..255]. A=0 is fully transparent, A=255 is solid. To
-// change the font size, set the PixelHeight value.
+// change the font size, set the HeightInPixels.
 type Font struct {
 	R, G, B, A     uint8
 	HeightInPixels int
