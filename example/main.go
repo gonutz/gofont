@@ -8,8 +8,6 @@ import (
 	"image/png"
 	"os"
 
-	"golang.org/x/image/font/gofont/goregular"
-
 	"github.com/gonutz/gofont"
 )
 
@@ -17,7 +15,7 @@ func main() {
 	// The font can be read from an io.Reader or loaded from file.
 	//  On Windows you could also do:
 	// font, err := gofont.LoadFromFile("c:/windows/fonts/arial.ttf")
-	font, err := gofont.Read(bytes.NewReader(goregular.TTF))
+	font, err := gofont.Read(bytes.NewReader(TTF))
 	check(err)
 
 	// Create a solid black image.
